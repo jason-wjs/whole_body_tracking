@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "whole-body-tracking"
+version = "0.1.0"
+description = "Independent whole-body tracking project built on top of official mjlab."
+readme = "README.md"
+requires-python = ">=3.10,<3.14"
+dependencies = [
+  "mjlab==1.2.0",
+  "numpy>=1.26",
+  "pyyaml>=6.0",
+  "tyro>=0.9.17",
+  "torch>=2.7.0",
+  "rsl-rl-lib==5.0.1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.4.2",
+  "ruff>=0.14.7",
+]
+
+[project.scripts]
+whole-body-tracking-build-dataset = "whole_body_tracking.cli.build_dataset:main"
+whole-body-tracking-validate-dataset = "whole_body_tracking.cli.validate_dataset:main"
+whole-body-tracking-train = "whole_body_tracking.cli.train:main"
+whole-body-tracking-play = "whole_body_tracking.cli.play:main"
+whole-body-tracking-evaluate = "whole_body_tracking.cli.evaluate:main"
+whole-body-tracking-export = "whole_body_tracking.cli.export:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["whole_body_tracking*"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "B", "I"]
