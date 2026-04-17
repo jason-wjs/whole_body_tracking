@@ -4,30 +4,12 @@ from pathlib import Path
 
 import numpy as np
 
-from whole_body_tracking.cli.build_dataset import main as build_dataset_main
-from whole_body_tracking.tracking.motion_source import MotionSource
-
-
-LAFAN1_ROOT = Path("/home/humanoid/Downloads/Data/G1_retargeted/lafan1_npz")
-
-
-def _build_dataset(tmp_path: Path, name: str, root: Path) -> Path:
-    output_dir = tmp_path / name
-    rc = build_dataset_main(
-        [
-            "--dataset-root",
-            str(root),
-            "--output-dir",
-            str(output_dir),
-        ]
-    )
-    assert rc == 0
-    return output_dir
+from tests.helpers import build_compiled_dataset_dir
+from whole_body_tracking.tasks.general_tracking.mdp.motion_source import MotionSource
 
 
 def test_motion_source_start_mode_starts_from_first_frame(tmp_path: Path) -> None:
-    sample = sorted(LAFAN1_ROOT.glob("*.npz"))[0]
-    dataset_dir = _build_dataset(tmp_path, "single_clip", sample)
+    dataset_dir = build_compiled_dataset_dir(tmp_path, "single_clip", num_clips=1)
     source = MotionSource(
         dataset_paths=[str(dataset_dir)],
         dataset_path_weights=[1.0],
@@ -41,8 +23,8 @@ def test_motion_source_start_mode_starts_from_first_frame(tmp_path: Path) -> Non
 
 
 def test_motion_source_uniform_sampling_respects_dataset_weights(tmp_path: Path) -> None:
-    dataset_a = _build_dataset(tmp_path, "dataset_a", LAFAN1_ROOT)
-    dataset_b = _build_dataset(tmp_path, "dataset_b", LAFAN1_ROOT)
+    dataset_a = build_compiled_dataset_dir(tmp_path, "dataset_a", num_clips=2)
+    dataset_b = build_compiled_dataset_dir(tmp_path, "dataset_b", num_clips=2)
     source = MotionSource(
         dataset_paths=[str(dataset_a), str(dataset_b)],
         dataset_path_weights=[1.0, 3.0],
@@ -58,8 +40,7 @@ def test_motion_source_uniform_sampling_respects_dataset_weights(tmp_path: Path)
 
 
 def test_motion_source_adaptive_sampling_biases_toward_failed_bin(tmp_path: Path) -> None:
-    sample = sorted(LAFAN1_ROOT.glob("*.npz"))[0]
-    dataset_dir = _build_dataset(tmp_path, "adaptive_single", sample)
+    dataset_dir = build_compiled_dataset_dir(tmp_path, "adaptive_single", num_clips=1, num_frames=100)
     source = MotionSource(
         dataset_paths=[str(dataset_dir)],
         dataset_path_weights=[1.0],
@@ -73,7 +54,7 @@ def test_motion_source_adaptive_sampling_biases_toward_failed_bin(tmp_path: Path
 
     source.reset()
     source.active_clip_ids[0] = 0
-    source.active_frame_idx[0] = 1250
+    source.active_frame_idx[0] = 80
     source.record_failures(np.array([0], dtype=np.int64))
 
     sampled = []
@@ -83,12 +64,11 @@ def test_motion_source_adaptive_sampling_biases_toward_failed_bin(tmp_path: Path
 
     sampled = np.asarray(sampled, dtype=np.int64)
     assert sampled.min() >= 0
-    assert sampled.mean() > 800
+    assert sampled.mean() > 40
 
 
 def test_motion_source_future_reference_clamps_at_clip_end(tmp_path: Path) -> None:
-    sample = sorted(LAFAN1_ROOT.glob("*.npz"))[0]
-    dataset_dir = _build_dataset(tmp_path, "future_single", sample)
+    dataset_dir = build_compiled_dataset_dir(tmp_path, "future_single", num_clips=1, num_frames=8)
     source = MotionSource(
         dataset_paths=[str(dataset_dir)],
         dataset_path_weights=[1.0],
@@ -100,5 +80,8 @@ def test_motion_source_future_reference_clamps_at_clip_end(tmp_path: Path) -> No
     source.reset()
     source.active_clip_ids[0] = 0
     source.active_frame_idx[0] = source.active_clip_num_frames[0] - 1
-    future = source.reference(np.array([0], dtype=np.int64), frame_offsets=np.array([0, 1, 2], dtype=np.int64))
+    future = source.reference(
+        np.array([0], dtype=np.int64),
+        frame_offsets=np.array([0, 1, 2], dtype=np.int64),
+    )
     assert future["joint_pos"].shape == (1, 3, 29)

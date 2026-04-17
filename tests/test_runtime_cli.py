@@ -1,93 +1,81 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
-from whole_body_tracking.cli.build_dataset import main as build_dataset_main
-from whole_body_tracking.cli.evaluate import main as evaluate_main
-from whole_body_tracking.cli.play import main as play_main
-from whole_body_tracking.cli.train import main as train_main
-from whole_body_tracking.runtime.mjlab_guard import is_disallowed_workspace_mjlab_path
+from whole_body_tracking.tasks.general_tracking.scripts import play as play_script
 
 
-LAFAN1_ROOT = Path("/home/humanoid/Downloads/Data/G1_retargeted/lafan1_npz")
+def test_play_cli_extracts_dataset_args_and_delegates(monkeypatch) -> None:
+    captured: dict[str, object] = {}
 
+    def _fake_delegate(argv: list[str]) -> int:
+        captured["argv"] = argv
+        captured["paths"] = json.loads(str(play_script.os.environ["WBT_COMPILED_DATASET_PATHS"]))
+        captured["weights"] = json.loads(str(play_script.os.environ["WBT_COMPILED_DATASET_WEIGHTS"]))
+        return 0
 
-def _build_dataset(tmp_path: Path, name: str) -> Path:
-    output_dir = tmp_path / name
-    rc = build_dataset_main(
+    monkeypatch.delenv("WBT_COMPILED_DATASET_PATHS", raising=False)
+    monkeypatch.delenv("WBT_COMPILED_DATASET_WEIGHTS", raising=False)
+    monkeypatch.setattr(play_script, "_delegate_to_mjlab_play", _fake_delegate)
+
+    rc = play_script.main(
         [
-            "--dataset-root",
-            str(LAFAN1_ROOT),
-            "--output-dir",
-            str(output_dir),
-        ]
-    )
-    assert rc == 0
-    return output_dir
-
-
-def test_is_disallowed_workspace_mjlab_path() -> None:
-    assert is_disallowed_workspace_mjlab_path(
-        "/home/humanoid/Projects/Junsong_WU/learning/locomotion/controller/mjlab/src/mjlab/__init__.py"
-    )
-    assert not is_disallowed_workspace_mjlab_path(
-        "/tmp/fake-site-packages/mjlab/__init__.py"
-    )
-
-
-def test_shell_wrappers_do_not_reference_sparse_control() -> None:
-    scripts_dir = Path(__file__).resolve().parents[1] / "scripts"
-    for name in ("build_dataset.sh", "validate_dataset.sh", "train.sh", "play.sh", "evaluate.sh", "export.sh"):
-        content = (scripts_dir / name).read_text(encoding="utf-8")
-        assert "sparse_control" not in content
-
-
-def test_train_cli_dry_run_smoke(tmp_path: Path) -> None:
-    dataset_dir = _build_dataset(tmp_path, "train_compiled")
-    rc = train_main(
-        [
+            "Mjlab-GeneralTracking-Flat-Unitree-G1",
             "--dataset-path",
-            str(dataset_dir),
+            "/tmp/ds_a",
+            "--dataset-path=/tmp/ds_b",
             "--dataset-weight",
             "1.0",
-            "--num-envs",
-            "8",
-            "--dry-run",
+            "--dataset-weight=3.0",
+            "--viewer",
+            "viser",
         ]
     )
+
     assert rc == 0
+    assert captured["argv"] == [
+        "Mjlab-GeneralTracking-Flat-Unitree-G1",
+        "--viewer",
+        "viser",
+    ]
+    assert captured["paths"] == ["/tmp/ds_a", "/tmp/ds_b"]
+    assert captured["weights"] == [1.0, 3.0]
 
 
-def test_play_cli_dry_run_smoke(tmp_path: Path) -> None:
-    dataset_dir = _build_dataset(tmp_path, "play_compiled")
-    rc = play_main(
+def test_shell_wrappers_use_new_entrypoints() -> None:
+    scripts_dir = Path(__file__).resolve().parents[1] / "scripts"
+    train_sh = (scripts_dir / "train.sh").read_text(encoding="utf-8")
+    play_sh = (scripts_dir / "play.sh").read_text(encoding="utf-8")
+    assert "uv run train" in train_sh
+    assert "uv run wbt-play" in play_sh
+
+
+def test_play_cli_dispatches_headless_mode_locally(monkeypatch) -> None:
+    called: dict[str, object] = {"mode": None}
+
+    def _fake_delegate(_argv: list[str]) -> int:
+      called["mode"] = "delegate"
+      return 0
+
+    def _fake_headless(_argv: list[str]) -> int:
+      called["mode"] = "headless"
+      return 0
+
+    monkeypatch.setattr(play_script, "_delegate_to_mjlab_play", _fake_delegate)
+    monkeypatch.setattr(play_script, "_run_headless_play", _fake_headless)
+
+    rc = play_script.main(
         [
+            "Mjlab-GeneralTracking-Flat-Unitree-G1",
             "--dataset-path",
-            str(dataset_dir),
-            "--dry-run",
-        ]
-    )
-    assert rc == 0
-
-
-def test_evaluate_cli_dry_run_smoke(tmp_path: Path) -> None:
-    dataset_dir = _build_dataset(tmp_path, "evaluate_compiled")
-    output_file = tmp_path / "metrics.json"
-    rc = evaluate_main(
-        [
-            "--dataset-path",
-            str(dataset_dir),
-            "--agent",
-            "zero",
-            "--device",
-            "cpu",
-            "--num-envs",
-            "1",
+            "/tmp/ds_a",
+            "--viewer",
+            "none",
             "--num-steps",
             "2",
-            "--output-file",
-            str(output_file),
         ]
     )
+
     assert rc == 0
-    assert output_file.is_file()
+    assert called["mode"] == "headless"
