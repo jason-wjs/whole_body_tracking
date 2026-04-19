@@ -1,53 +1,78 @@
 [build-system]
-requires = ["setuptools>=69", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["uv_build>=0.8.19,<0.9.0"]
+build-backend = "uv_build"
 
 [project]
 name = "whole-body-tracking"
-version = "0.1.0"
-description = "Independent whole-body tracking project built on top of official mjlab."
+version = "0.2.0"
+description = "G1 whole-body motion tracking task package built on mjlab."
 readme = "README.md"
+license = "Apache-2.0"
 requires-python = ">=3.10,<3.14"
 dependencies = [
-  "mjlab==1.2.0",
+  "mjlab[cu128]>=1.3,<1.4",
   "numpy>=1.26",
   "pyyaml>=6.0",
-  "tyro>=0.9.17",
-  "torch>=2.7.0",
-  "rsl-rl-lib==5.0.1",
-]
-
-[project.optional-dependencies]
-dev = [
-  "pytest>=8.4.2",
-  "ruff>=0.14.7",
 ]
 
 [project.scripts]
-whole-body-tracking-build-dataset = "whole_body_tracking.cli.build_dataset:main"
-whole-body-tracking-validate-dataset = "whole_body_tracking.cli.validate_dataset:main"
-whole-body-tracking-train = "whole_body_tracking.cli.train:main"
-whole-body-tracking-play = "whole_body_tracking.cli.play:main"
-whole-body-tracking-evaluate = "whole_body_tracking.cli.evaluate:main"
-whole-body-tracking-export = "whole_body_tracking.cli.export:main"
+wbt-build-dataset = "whole_body_tracking.data.build_dataset:main"
+wbt-play = "whole_body_tracking.tasks.general_tracking.scripts.play:main"
+wbt-evaluate = "whole_body_tracking.tasks.general_tracking.scripts.evaluate:main"
+wbt-export = "whole_body_tracking.tasks.general_tracking.scripts.export:main"
 
-[tool.setuptools]
-include-package-data = true
+[project.entry-points."mjlab.tasks"]
+whole_body_tracking = "whole_body_tracking._mjlab_tasks"
 
-[tool.setuptools.package-dir]
-"" = "src"
+[tool.uv.sources]
+warp-lang = { index = "nvidia", marker = "sys_platform != 'darwin'" }
+torch = [
+  { index = "pytorch-cu128", marker = "sys_platform != 'darwin'" },
+]
+mujoco = { index = "mujoco" }
+mujoco-warp = { git = "https://github.com/google-deepmind/mujoco_warp", rev = "ea7f05b" }
 
-[tool.setuptools.packages.find]
-where = ["src"]
-include = ["whole_body_tracking*"]
+[[tool.uv.index]]
+url = "https://pypi.org/simple"
+
+[[tool.uv.index]]
+name = "nvidia"
+url = "https://pypi.nvidia.com/"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[[tool.uv.index]]
+name = "mujoco"
+url = "https://py.mujoco.org"
+explicit = true
+
+[tool.uv]
+override-dependencies = ["mujoco>=3.7.0.dev0"]
+
+[dependency-groups]
+dev = [
+  "pyright>=1.1.408",
+  "pytest>=9.0.2",
+  "ruff>=0.14.14",
+]
+
+[tool.ruff]
+src = ["src", "tests"]
+indent-width = 2
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B"]
+
+[tool.pyright]
+pythonVersion = "3.10"
+ignore = []
+stubPath = "typings"
+reportWildcardImportFromLibrary = false
 
 [tool.pytest.ini_options]
 addopts = "--strict-markers"
 testpaths = ["tests"]
-
-[tool.ruff]
-line-length = 88
-src = ["src"]
-
-[tool.ruff.lint]
-select = ["E4", "E7", "E9", "F", "B", "I"]

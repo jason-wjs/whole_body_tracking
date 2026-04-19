@@ -4,6 +4,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-uv run --project "${REPO_ROOT}" python -m whole_body_tracking.cli.build_dataset \
-    --dataset-root /home/humanoid/Downloads/Data/G1_retargeted/lafan1_npz \
-    --output-dir /tmp/lafan1_compiled
+RAW_DATASET_ROOT="${WBT_RAW_DATASET_ROOT:-/home/humanoid/Downloads/Data/G1_retargeted/lafan1_npz}"
+COMPILED_DATASET_DIR="${WBT_COMPILED_DATASET_DIR:-/tmp/lafan1_compiled}"
+
+uv run --project "${REPO_ROOT}" wbt-build-dataset \
+  --dataset-root "${RAW_DATASET_ROOT}" \
+  --output-dir "${COMPILED_DATASET_DIR}" \
+  "$@"
