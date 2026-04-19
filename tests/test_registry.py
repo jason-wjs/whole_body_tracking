@@ -40,3 +40,13 @@ def test_general_tracking_tasks_register_with_mjlab_registry() -> None:
     tasks = registry.list_tasks()
     assert "Mjlab-GeneralTracking-Flat-Unitree-G1" in tasks
     assert "Mjlab-GeneralTracking-Flat-Unitree-G1-No-State-Estimation" in tasks
+
+
+def test_general_tracking_rl_cfg_uses_whole_body_tracking_wandb_project() -> None:
+    registry._REGISTRY.clear()
+    from whole_body_tracking.tasks.general_tracking.config import g1 as g1_config
+
+    importlib.reload(g1_config)
+
+    rl_cfg = registry.load_rl_cfg("Mjlab-GeneralTracking-Flat-Unitree-G1")
+    assert rl_cfg.wandb_project == "whole_body_tracking"
