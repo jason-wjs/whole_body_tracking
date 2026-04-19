@@ -1,7 +1,17 @@
 # whole_body_tracking
 
-`whole_body_tracking` is a downstream `mjlab` task package for G1 whole-body motion
+`whole_body_tracking` is a downstream `mjlab` task package for G1 general motion
 tracking with local compiled datasets.
+
+## Baseline Branch Positioning
+
+The `baseline` branch is positioned as the baseline for future general motion tracking
+development. It keeps the original BeyondMimic algorithmic foundation from the official
+[HybridRobotics/whole_body_tracking](https://github.com/HybridRobotics/whole_body_tracking)
+repository, while adding support for training a general motion tracker on datasets.
+
+This branch is intended to serve as the reference starting point for subsequent branches
+that continue expanding general motion tracking capability.
 
 This repository owns:
 
@@ -19,16 +29,6 @@ uv sync --dev
 ```
 
 ## Main Workflows
-
-Project wrappers in `scripts/` currently hard-code a local `lafan1` workflow:
-
-- raw dataset root: `/home/humanoid/Downloads/Data/G1_retargeted/lafan1_npz`
-- compiled dataset dir: `/tmp/lafan1_compiled`
-- experiment: `g1_general_tracking`
-- run name pattern: `lafan1_g1_single_gpu`
-
-Adjust those command arguments directly if your local paths or run naming differ, then run the
-script as-is or append extra CLI flags after the script name.
 
 Build a compiled dataset:
 
