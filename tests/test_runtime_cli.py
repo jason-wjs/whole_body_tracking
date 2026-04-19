@@ -50,30 +50,72 @@ def test_shell_wrappers_use_new_entrypoints() -> None:
     play_sh = (scripts_dir / "play.sh").read_text(encoding="utf-8")
     evaluate_sh = (scripts_dir / "evaluate.sh").read_text(encoding="utf-8")
     export_sh = (scripts_dir / "export.sh").read_text(encoding="utf-8")
-    assert "WBT_RAW_DATASET_ROOT" in build_dataset_sh
-    assert "WBT_COMPILED_DATASET_DIR" in build_dataset_sh
+    assert "RAW_DATASET_ROOT=" not in build_dataset_sh
+    assert "COMPILED_DATASET_DIR=" not in build_dataset_sh
+    assert '--dataset-root "/home/humanoid/Downloads/Data/G1_retargeted/lafan1_npz"' in build_dataset_sh
+    assert '--output-dir "/tmp/lafan1_compiled"' in build_dataset_sh
+    assert "WBT_" not in build_dataset_sh
     assert "--dataset-root" in build_dataset_sh
     assert "--output-dir" in build_dataset_sh
     assert "uv run --project" in train_sh
     assert " train " in train_sh
+    assert "TASK_ID=" not in train_sh
+    assert "COMPILED_DATASET_DIR=" not in train_sh
+    assert "EXPERIMENT_NAME=" not in train_sh
+    assert "RUN_NAME=" not in train_sh
+    assert "MAX_ITERATIONS=" not in train_sh
+    assert "WBT_" not in train_sh
     assert "Mjlab-GeneralTracking-Flat-Unitree-G1" in train_sh
-    assert "--env.commands.motion.dataset-paths" in train_sh
-    assert "--agent.experiment-name" in train_sh
-    assert "--agent.run-name" in train_sh
-    assert "WBT_MAX_ITERATIONS" in train_sh
+    assert '--env.commands.motion.dataset-paths "(\'/tmp/lafan1_compiled\',)"' in train_sh
+    assert '--agent.experiment-name "g1_general_tracking"' in train_sh
+    assert '--agent.run-name "lafan1_g1_single_gpu"' in train_sh
+    assert '--agent.max-iterations "30000"' in train_sh
     assert "uv run --project" in play_sh
     assert " wbt-play " in play_sh
-    assert "WBT_COMPILED_DATASET_DIR" in play_sh
-    assert "--experiment-name" in play_sh
-    assert "--load-run" in play_sh
+    assert "TASK_ID=" not in play_sh
+    assert "COMPILED_DATASET_DIR=" not in play_sh
+    assert "EXPERIMENT_NAME=" not in play_sh
+    assert "RUN_NAME=" not in play_sh
+    assert "LOAD_RUN=" not in play_sh
+    assert "VIEWER=" not in play_sh
+    assert "DEVICE=" not in play_sh
+    assert "NUM_ENVS=" not in play_sh
+    assert "WBT_" not in play_sh
+    assert '--dataset-path "/tmp/lafan1_compiled"' in play_sh
+    assert '--experiment-name "g1_general_tracking"' in play_sh
+    assert '--load-run ".*lafan1_g1_single_gpu"' in play_sh
+    assert '--viewer "viser"' in play_sh
+    assert '--device "cuda:0"' in play_sh
+    assert '--num-envs "4"' in play_sh
     assert "uv run --project" in evaluate_sh
     assert " wbt-evaluate " in evaluate_sh
-    assert "WBT_EVAL_OUTPUT_FILE" in evaluate_sh
-    assert "--output-file" in evaluate_sh
+    assert "TASK_ID=" not in evaluate_sh
+    assert "COMPILED_DATASET_DIR=" not in evaluate_sh
+    assert "EXPERIMENT_NAME=" not in evaluate_sh
+    assert "RUN_NAME=" not in evaluate_sh
+    assert "LOAD_RUN=" not in evaluate_sh
+    assert "DEVICE=" not in evaluate_sh
+    assert "NUM_ENVS=" not in evaluate_sh
+    assert "OUTPUT_FILE=" not in evaluate_sh
+    assert "WBT_" not in evaluate_sh
+    assert '--dataset-path "/tmp/lafan1_compiled"' in evaluate_sh
+    assert '--experiment-name "g1_general_tracking"' in evaluate_sh
+    assert '--load-run ".*lafan1_g1_single_gpu"' in evaluate_sh
+    assert '--output-file "/tmp/wbt_eval/metrics.json"' in evaluate_sh
     assert "uv run --project" in export_sh
     assert " wbt-export " in export_sh
-    assert "WBT_EXPORT_DIR" in export_sh
-    assert "--output-dir" in export_sh
+    assert "TASK_ID=" not in export_sh
+    assert "COMPILED_DATASET_DIR=" not in export_sh
+    assert "EXPERIMENT_NAME=" not in export_sh
+    assert "RUN_NAME=" not in export_sh
+    assert "LOAD_RUN=" not in export_sh
+    assert "DEVICE=" not in export_sh
+    assert "EXPORT_DIR=" not in export_sh
+    assert "WBT_" not in export_sh
+    assert '--dataset-path "/tmp/lafan1_compiled"' in export_sh
+    assert '--experiment-name "g1_general_tracking"' in export_sh
+    assert '--load-run ".*lafan1_g1_single_gpu"' in export_sh
+    assert '--output-dir "/tmp/wbt_export"' in export_sh
 
 
 def test_play_cli_dispatches_headless_mode_locally(monkeypatch) -> None:

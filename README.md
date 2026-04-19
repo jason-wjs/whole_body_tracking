@@ -20,10 +20,15 @@ uv sync --dev
 
 ## Main Workflows
 
-Project wrappers in `scripts/` carry the repository's default G1/LAFAN1 presets. Override them
-with environment variables such as `WBT_RAW_DATASET_ROOT`, `WBT_COMPILED_DATASET_DIR`,
-`WBT_EXPERIMENT_NAME`, `WBT_RUN_NAME`, `WBT_NUM_ENVS`, and `WBT_MAX_ITERATIONS`, or append
-extra CLI flags after the script name.
+Project wrappers in `scripts/` currently hard-code a local `lafan1` workflow:
+
+- raw dataset root: `/home/humanoid/Downloads/Data/G1_retargeted/lafan1_npz`
+- compiled dataset dir: `/tmp/lafan1_compiled`
+- experiment: `g1_general_tracking`
+- run name pattern: `lafan1_g1_single_gpu`
+
+Adjust those command arguments directly if your local paths or run naming differ, then run the
+script as-is or append extra CLI flags after the script name.
 
 Build a compiled dataset:
 
@@ -55,12 +60,12 @@ Export ONNX and TorchScript artifacts:
 ./scripts/export.sh
 ```
 
-For one-off overrides, either adjust the environment variables or call the lower-level commands
+For one-off overrides, either edit the hard-coded script arguments or call the lower-level commands
 directly:
 
 ```bash
 uv run train Mjlab-GeneralTracking-Flat-Unitree-G1 \
-  --env.commands.motion.dataset-paths "('<compiled_dataset_dir>',)" \
+  --env.commands.motion.dataset-paths "('/tmp/lafan1_compiled',)" \
   --env.commands.motion.dataset-weights "(1.0,)" \
   --env.scene.num-envs 4096 \
   --agent.max-iterations 30000
