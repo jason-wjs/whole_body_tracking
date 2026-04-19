@@ -20,15 +20,43 @@ uv sync --dev
 
 ## Main Workflows
 
+Project wrappers in `scripts/` carry the repository's default G1/LAFAN1 presets. Override them
+with environment variables such as `WBT_RAW_DATASET_ROOT`, `WBT_COMPILED_DATASET_DIR`,
+`WBT_EXPERIMENT_NAME`, `WBT_RUN_NAME`, `WBT_NUM_ENVS`, and `WBT_MAX_ITERATIONS`, or append
+extra CLI flags after the script name.
+
 Build a compiled dataset:
 
 ```bash
-uv run wbt-build-dataset \
-  --dataset-root <raw_npz_dir_or_single_clip> \
-  --output-dir <compiled_dataset_dir>
+./scripts/build_dataset.sh
 ```
 
 Train with the official `mjlab` registry flow:
+
+```bash
+./scripts/train.sh
+```
+
+Play from a local checkpoint:
+
+```bash
+./scripts/play.sh
+```
+
+Evaluate a checkpoint locally:
+
+```bash
+./scripts/evaluate.sh
+```
+
+Export ONNX and TorchScript artifacts:
+
+```bash
+./scripts/export.sh
+```
+
+For one-off overrides, either adjust the environment variables or call the lower-level commands
+directly:
 
 ```bash
 uv run train Mjlab-GeneralTracking-Flat-Unitree-G1 \
@@ -36,34 +64,6 @@ uv run train Mjlab-GeneralTracking-Flat-Unitree-G1 \
   --env.commands.motion.dataset-weights "(1.0,)" \
   --env.scene.num-envs 4096 \
   --agent.max-iterations 30000
-```
-
-Play from a local checkpoint:
-
-```bash
-uv run wbt-play Mjlab-GeneralTracking-Flat-Unitree-G1 \
-  --dataset-path <compiled_dataset_dir> \
-  --checkpoint-file <checkpoint.pt> \
-  --viewer viser
-```
-
-Evaluate a checkpoint locally:
-
-```bash
-uv run wbt-evaluate Mjlab-GeneralTracking-Flat-Unitree-G1 \
-  --dataset-path <compiled_dataset_dir> \
-  --checkpoint-file <checkpoint.pt> \
-  --num-envs 1024 \
-  --output-file <metrics.json>
-```
-
-Export ONNX and TorchScript artifacts:
-
-```bash
-uv run wbt-export Mjlab-GeneralTracking-Flat-Unitree-G1 \
-  --dataset-path <compiled_dataset_dir> \
-  --checkpoint-file <checkpoint.pt> \
-  --output-dir <export_dir>
 ```
 
 ## Registered Tasks
