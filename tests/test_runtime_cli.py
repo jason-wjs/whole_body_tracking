@@ -52,7 +52,7 @@ def test_shell_wrappers_use_new_entrypoints() -> None:
     export_sh = (scripts_dir / "export.sh").read_text(encoding="utf-8")
     assert "RAW_DATASET_ROOT=" not in build_dataset_sh
     assert "COMPILED_DATASET_DIR=" not in build_dataset_sh
-    assert '--dataset-root "/home/humanoid/Downloads/Data/G1_retargeted/lafan1_npz"' in build_dataset_sh
+    assert '--dataset-root "/home/humanoid/Downloads/Data/G1_retargeted/lafan1_g1_official/lafan1_npz"' in build_dataset_sh
     assert '--output-dir "/tmp/lafan1_compiled"' in build_dataset_sh
     assert "WBT_" not in build_dataset_sh
     assert "--dataset-root" in build_dataset_sh
