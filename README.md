@@ -65,7 +65,7 @@ directly:
 
 ```bash
 uv run train Mjlab-GeneralTracking-Flat-Unitree-G1 \
-  --env.commands.motion.dataset-paths "('/tmp/lafan1_compiled',)" \
+  --env.commands.motion.dataset-paths "('/path/to/compiled_g1_dataset',)" \
   --env.commands.motion.dataset-weights "(1.0,)" \
   --env.scene.num-envs 4096 \
   --agent.max-iterations 30000
