@@ -7,10 +7,16 @@ import torch
 from mjlab.envs import ManagerBasedRlEnv
 
 from tests.helpers import build_compiled_dataset_dir
+from whole_body_tracking.data.g1_schema import (
+    G1_ANCHOR_BODY_NAME,
+    G1_TRACKED_BODY_NAMES,
+)
 from whole_body_tracking.tasks.general_tracking.config.g1.env_cfgs import (
     unitree_g1_general_tracking_env_cfg,
 )
-from whole_body_tracking.tasks.general_tracking.mdp.commands import GeneralTrackingCommandCfg
+from whole_body_tracking.tasks.general_tracking.mdp.commands import (
+    MultiMotionCommandCfg,
+)
 
 
 def test_play_env_cfg_reads_dataset_paths_from_environment(monkeypatch, tmp_path: Path) -> None:
@@ -19,7 +25,9 @@ def test_play_env_cfg_reads_dataset_paths_from_environment(monkeypatch, tmp_path
     monkeypatch.setenv("WBT_COMPILED_DATASET_WEIGHTS", json.dumps([1.0]))
     cfg = unitree_g1_general_tracking_env_cfg(play=True)
     motion_cfg = cfg.commands["motion"]
-    assert isinstance(motion_cfg, GeneralTrackingCommandCfg)
+    assert isinstance(motion_cfg, MultiMotionCommandCfg)
+    assert motion_cfg.anchor_body_name == G1_ANCHOR_BODY_NAME
+    assert motion_cfg.body_names == G1_TRACKED_BODY_NAMES
     assert motion_cfg.dataset_paths == (str(dataset_dir),)
     assert motion_cfg.dataset_weights == (1.0,)
     assert motion_cfg.sampling_mode == "start"
@@ -29,7 +37,9 @@ def test_registered_env_cfg_can_reset_and_step_on_cpu(tmp_path: Path) -> None:
     dataset_dir = build_compiled_dataset_dir(tmp_path, "train_ds")
     cfg = unitree_g1_general_tracking_env_cfg(play=False)
     motion_cfg = cfg.commands["motion"]
-    assert isinstance(motion_cfg, GeneralTrackingCommandCfg)
+    assert isinstance(motion_cfg, MultiMotionCommandCfg)
+    assert motion_cfg.anchor_body_name == G1_ANCHOR_BODY_NAME
+    assert motion_cfg.body_names == G1_TRACKED_BODY_NAMES
     motion_cfg.dataset_paths = (str(dataset_dir),)
     motion_cfg.dataset_weights = (1.0,)
     cfg.scene.num_envs = 1

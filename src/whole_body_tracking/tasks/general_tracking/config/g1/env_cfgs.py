@@ -7,9 +7,17 @@ from mjlab.envs import ManagerBasedRlEnvCfg
 from mjlab.envs.mdp.actions import JointPositionActionCfg
 from mjlab.sensor import ContactMatch, ContactSensorCfg
 
+from whole_body_tracking.data.g1_schema import (
+  G1_ANCHOR_BODY_NAME,
+  G1_TRACKED_BODY_NAMES,
+)
 from whole_body_tracking.tasks.general_tracking._dataset_env import parse_dataset_env
-from whole_body_tracking.tasks.general_tracking.general_tracking_env_cfg import make_general_tracking_env_cfg
-from whole_body_tracking.tasks.general_tracking.mdp.commands import GeneralTrackingCommandCfg
+from whole_body_tracking.tasks.general_tracking.general_tracking_env_cfg import (
+  make_general_tracking_env_cfg,
+)
+from whole_body_tracking.tasks.general_tracking.mdp.commands import (
+  MultiMotionCommandCfg,
+)
 
 
 def unitree_g1_general_tracking_env_cfg(
@@ -23,6 +31,11 @@ def unitree_g1_general_tracking_env_cfg(
     dataset_paths=dataset_paths,
     dataset_weights=dataset_weights,
   )
+
+  motion_cmd = cfg.commands["motion"]
+  assert isinstance(motion_cmd, MultiMotionCommandCfg)
+  motion_cmd.anchor_body_name = G1_ANCHOR_BODY_NAME
+  motion_cmd.body_names = G1_TRACKED_BODY_NAMES
 
   cfg.scene.entities = {"robot": get_g1_robot_cfg()}
 
@@ -40,10 +53,6 @@ def unitree_g1_general_tracking_env_cfg(
   joint_pos_action = cfg.actions["joint_pos"]
   assert isinstance(joint_pos_action, JointPositionActionCfg)
   joint_pos_action.scale = G1_ACTION_SCALE
-
-  motion_cmd = cfg.commands["motion"]
-  assert isinstance(motion_cmd, GeneralTrackingCommandCfg)
-  motion_cmd.anchor_body_name = "torso_link"
 
   cfg.events["foot_friction"].params["asset_cfg"].geom_names = r"^(left|right)_foot[1-7]_collision$"
   cfg.events["base_com"].params["asset_cfg"].body_names = ("torso_link",)

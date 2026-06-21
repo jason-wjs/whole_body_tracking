@@ -9,13 +9,15 @@ from pathlib import Path
 from typing import Sequence
 
 import torch
-
 from mjlab.envs import ManagerBasedRlEnv
 from mjlab.rl import MjlabOnPolicyRunner, RslRlVecEnvWrapper
 from mjlab.tasks.registry import load_env_cfg, load_rl_cfg
 from mjlab.utils.torch import configure_torch_backends
 
-from whole_body_tracking.tasks.general_tracking.mdp.commands import GeneralTrackingCommand, GeneralTrackingCommandCfg
+from whole_body_tracking.tasks.general_tracking.mdp.commands import (
+  MultiMotionCommand,
+  MultiMotionCommandCfg,
+)
 from whole_body_tracking.tasks.general_tracking.mdp.metrics import (
   compute_ee_orientation_error,
   compute_ee_position_error,
@@ -96,7 +98,7 @@ def main(argv: Sequence[str] | None = None) -> int:
   env_cfg = load_env_cfg(args.task_id, play=False)
   agent_cfg = load_rl_cfg(args.task_id)
   motion_cfg = env_cfg.commands["motion"]
-  assert isinstance(motion_cfg, GeneralTrackingCommandCfg)
+  assert isinstance(motion_cfg, MultiMotionCommandCfg)
   motion_cfg.dataset_paths = tuple(dataset_paths)
   motion_cfg.dataset_weights = dataset_weights
   motion_cfg.sampling_mode = "start"
@@ -122,7 +124,7 @@ def main(argv: Sequence[str] | None = None) -> int:
   policy = _build_policy(args.agent, vec_env, checkpoint_file, device, agent_cfg)
 
   command = vec_env.unwrapped.command_manager.get_term("motion")
-  assert isinstance(command, GeneralTrackingCommand)
+  assert isinstance(command, MultiMotionCommand)
   ee_body_names = tuple(env_cfg.terminations["ee_body_pos"].params["body_names"])
 
   metric_stacks: dict[str, list[torch.Tensor]] = {

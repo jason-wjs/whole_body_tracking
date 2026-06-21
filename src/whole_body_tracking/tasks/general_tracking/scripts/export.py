@@ -12,7 +12,9 @@ from mjlab.rl import MjlabOnPolicyRunner, RslRlVecEnvWrapper
 from mjlab.tasks.registry import load_env_cfg, load_rl_cfg
 from mjlab.utils.torch import configure_torch_backends
 
-from whole_body_tracking.tasks.general_tracking.mdp.commands import GeneralTrackingCommandCfg
+from whole_body_tracking.tasks.general_tracking.mdp.commands import (
+  MultiMotionCommandCfg,
+)
 
 from ._checkpoints import resolve_local_checkpoint
 
@@ -54,7 +56,7 @@ def main(argv: Sequence[str] | None = None) -> int:
   env_cfg = load_env_cfg(args.task_id, play=True)
   agent_cfg = load_rl_cfg(args.task_id)
   motion_cfg = env_cfg.commands["motion"]
-  assert isinstance(motion_cfg, GeneralTrackingCommandCfg)
+  assert isinstance(motion_cfg, MultiMotionCommandCfg)
   motion_cfg.dataset_paths = tuple(dataset_paths)
   motion_cfg.dataset_weights = dataset_weights
   env_cfg.scene.num_envs = 1
