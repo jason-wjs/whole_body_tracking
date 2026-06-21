@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -11,6 +12,7 @@ from tests.helpers import build_compiled_dataset_dir
 from whole_body_tracking.data.compiled_dataset import CompiledMotionDataset
 from whole_body_tracking.data.g1_schema import G1_TRACKED_BODY_NAMES
 from whole_body_tracking.tasks.general_tracking.mdp.commands import (
+    MultiMotionCommand,
     MultiMotionCommandCfg,
     _CompiledMotionLoader,
 )
@@ -122,20 +124,86 @@ def test_compiled_motion_loader_rejects_invalid_path_and_weight_counts(
         )
 
 
-@pytest.mark.parametrize("dataset_weights", [(-1.0,), (0.0,)])
+@pytest.mark.parametrize("dataset_weights", [(-1.0,), (0.0,), (1.0, 0.0)])
 def test_compiled_motion_loader_rejects_non_positive_total_weights(
     tmp_path: Path,
     dataset_weights: tuple[float, ...],
 ) -> None:
-    dataset_dir = build_compiled_dataset_dir(tmp_path, "dataset")
+    dataset_dirs = [
+        build_compiled_dataset_dir(tmp_path, f"dataset_{idx}")
+        for idx in range(len(dataset_weights))
+    ]
 
-    with pytest.raises(ValueError, match="dataset_weights must be non-negative and sum to a positive value"):
+    with pytest.raises(ValueError, match="dataset_weights must all be positive"):
         _CompiledMotionLoader(
-            dataset_paths=(str(dataset_dir),),
+            dataset_paths=tuple(str(dataset_dir) for dataset_dir in dataset_dirs),
             dataset_weights=dataset_weights,
             body_names=G1_TRACKED_BODY_NAMES,
             device="cpu",
         )
+
+
+class _FakeGuiHandle:
+    def __init__(self, value=0):
+        self.value = value
+        self.disabled = False
+        self.callback = None
+
+    def on_update(self, callback):
+        self.callback = callback
+        return callback
+
+    def on_click(self, callback):
+        self.callback = callback
+        return callback
+
+
+class _FakeGui:
+    def __init__(self):
+        self.slider = None
+        self.checkbox = None
+        self.button = None
+
+    def add_folder(self, _name):
+        return self
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, _exc_type, _exc_value, _traceback):
+        return False
+
+    def add_slider(self, _name, *, initial_value, **_kwargs):
+        self.slider = _FakeGuiHandle(initial_value)
+        return self.slider
+
+    def add_checkbox(self, _name, *, initial_value):
+        self.checkbox = _FakeGuiHandle(initial_value)
+        return self.checkbox
+
+    def add_button(self, _name):
+        self.button = _FakeGuiHandle()
+        return self.button
+
+
+def test_multi_motion_command_gui_scrubber_syncs_clip_ids() -> None:
+    command = object.__new__(MultiMotionCommand)
+    command._env = SimpleNamespace(num_envs=1, device="cpu")
+    command.motion = SimpleNamespace(
+        time_step_total=10,
+        clip_frame_ends=torch.tensor([5, 10], dtype=torch.long),
+    )
+    command.time_steps = torch.zeros(1, dtype=torch.long)
+    command._clip_ids = torch.zeros(1, dtype=torch.long)
+    gui = _FakeGui()
+    server = SimpleNamespace(gui=gui)
+
+    command.create_gui("motion", server, get_env_idx=lambda: 0)
+    gui.slider.value = 7
+    gui.slider.callback(None)
+
+    assert command.time_steps.tolist() == [7]
+    assert command._clip_ids.tolist() == [1]
 
 
 def test_multi_motion_command_cfg_defaults_dataset_and_body_fields() -> None:

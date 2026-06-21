@@ -40,8 +40,8 @@ class _CompiledMotionLoader:
       raise ValueError("dataset_weights must be empty or match dataset_paths in length")
 
     dataset_weight_tensor = torch.tensor(dataset_weights, dtype=torch.float64)
-    if torch.any(dataset_weight_tensor < 0) or float(dataset_weight_tensor.sum()) <= 0.0:
-      raise ValueError("dataset_weights must be non-negative and sum to a positive value")
+    if torch.any(dataset_weight_tensor <= 0):
+      raise ValueError("dataset_weights must all be positive")
 
     datasets = [CompiledMotionDataset.open(path) for path in dataset_paths]
     joint_names = datasets[0].joint_names
@@ -334,12 +334,8 @@ class MultiMotionCommand(MotionCommand):
   def reset_to_frame(self, env_ids: torch.Tensor, frame: int) -> None:
     if env_ids.numel() == 0:
       return
-    frame = max(0, min(int(frame), self.motion.time_step_total - 1))
     frame_tensor = torch.full((env_ids.numel(),), frame, dtype=torch.long, device=self.device)
-    clip_ids = torch.searchsorted(self.motion.clip_frame_ends, frame_tensor, right=True)
-    clip_ids = torch.clamp(clip_ids, 0, self.motion.clip_frame_ends.shape[0] - 1)
-    self._clip_ids[env_ids] = clip_ids
-    self.time_steps[env_ids] = frame_tensor
+    self._set_global_frames(env_ids, frame_tensor)
     self._write_reference_state_to_sim(
       env_ids,
       self.body_pos_w[env_ids, 0],
@@ -350,8 +346,50 @@ class MultiMotionCommand(MotionCommand):
       self.joint_vel[env_ids],
     )
 
+  def create_gui(self, name: str, server, get_env_idx, on_change=None, request_action=None) -> None:
+    max_frame = int(self.motion.time_step_total) - 1
+
+    with server.gui.add_folder(name.capitalize()):
+      scrubber = server.gui.add_slider(
+        "Frame",
+        min=0,
+        max=max_frame,
+        step=1,
+        initial_value=0,
+      )
+
+      @scrubber.on_update
+      def _(_) -> None:
+        idx = get_env_idx()
+        env_ids = torch.tensor([idx], dtype=torch.long, device=self.device)
+        frames = torch.tensor([int(scrubber.value)], dtype=torch.long, device=self.device)
+        self._set_global_frames(env_ids, frames)
+        if on_change is not None:
+          on_change()
+
+      all_envs_cb = server.gui.add_checkbox("All envs", initial_value=True)
+      start_btn = server.gui.add_button("Start Here")
+
+      @start_btn.on_click
+      def _(_) -> None:
+        if request_action is not None:
+          request_action(
+            "CUSTOM",
+            {"type": "gui_reset", "all_envs": all_envs_cb.value},
+          )
+
+    self._scrubber_handles = (scrubber, all_envs_cb, start_btn)
+    self._set_scrubber_disabled(True)
+
   def _sample_clip_ids(self, count: int) -> torch.Tensor:
     return torch.multinomial(self.motion.clip_weights, count, replacement=True)
+
+  def _set_global_frames(self, env_ids: torch.Tensor, frames: torch.Tensor) -> None:
+    frames = torch.clamp(frames.long(), 0, self.motion.time_step_total - 1)
+    clip_ids = torch.searchsorted(self.motion.clip_frame_ends, frames, right=True)
+    clip_ids = torch.clamp(clip_ids, 0, self.motion.clip_frame_ends.shape[0] - 1)
+    self._clip_ids[env_ids] = clip_ids
+    self.time_steps[env_ids] = frames
 
   def _set_sampled_frames(
     self,
