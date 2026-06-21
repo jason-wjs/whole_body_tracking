@@ -134,10 +134,56 @@ def test_compiled_motion_loader_rejects_non_positive_total_weights(
         for idx in range(len(dataset_weights))
     ]
 
-    with pytest.raises(ValueError, match="dataset_weights must all be positive"):
+    with pytest.raises(ValueError, match="dataset_weights must be finite and positive"):
         _CompiledMotionLoader(
             dataset_paths=tuple(str(dataset_dir) for dataset_dir in dataset_dirs),
             dataset_weights=dataset_weights,
+            body_names=G1_TRACKED_BODY_NAMES,
+            device="cpu",
+        )
+
+
+@pytest.mark.parametrize("dataset_weights", [(float("inf"),), (float("nan"),)])
+def test_compiled_motion_loader_rejects_non_finite_dataset_weights(
+    tmp_path: Path,
+    dataset_weights: tuple[float, ...],
+) -> None:
+    dataset_dir = build_compiled_dataset_dir(tmp_path, "dataset")
+
+    with pytest.raises(ValueError, match="dataset_weights must be finite and positive"):
+        _CompiledMotionLoader(
+            dataset_paths=(str(dataset_dir),),
+            dataset_weights=dataset_weights,
+            body_names=G1_TRACKED_BODY_NAMES,
+            device="cpu",
+        )
+
+
+@pytest.mark.parametrize("clip_weights", [(1.0, float("inf")), (1.0, float("nan"))])
+def test_compiled_motion_loader_rejects_non_finite_clip_weights(
+    tmp_path: Path,
+    clip_weights: tuple[float, ...],
+) -> None:
+    dataset_dir = build_compiled_dataset_dir(tmp_path, "dataset", num_clips=2)
+    _set_clip_weights(dataset_dir, clip_weights)
+
+    with pytest.raises(ValueError, match="clip weights must be finite"):
+        _CompiledMotionLoader(
+            dataset_paths=(str(dataset_dir),),
+            dataset_weights=(1.0,),
+            body_names=G1_TRACKED_BODY_NAMES,
+            device="cpu",
+        )
+
+
+def test_compiled_motion_loader_rejects_misaligned_clip_weights(tmp_path: Path) -> None:
+    dataset_dir = build_compiled_dataset_dir(tmp_path, "dataset", num_clips=2)
+    _set_clip_weights(dataset_dir, (1.0,))
+
+    with pytest.raises(ValueError, match="clip weights must align with clip metadata"):
+        _CompiledMotionLoader(
+            dataset_paths=(str(dataset_dir),),
+            dataset_weights=(1.0,),
             body_names=G1_TRACKED_BODY_NAMES,
             device="cpu",
         )
@@ -184,6 +230,125 @@ class _FakeGui:
     def add_button(self, _name):
         self.button = _FakeGuiHandle()
         return self.button
+
+
+def _make_light_command(num_envs: int = 3) -> MultiMotionCommand:
+    command = object.__new__(MultiMotionCommand)
+    command._env = SimpleNamespace(
+        num_envs=num_envs,
+        device="cpu",
+        scene=SimpleNamespace(env_origins=torch.zeros(num_envs, 3)),
+        termination_manager=SimpleNamespace(terminated=torch.zeros(num_envs, dtype=torch.bool)),
+    )
+    command.cfg = SimpleNamespace(adaptive_alpha=1.0)
+    command.metrics = {
+        "sampling_entropy": torch.zeros(num_envs),
+        "sampling_top1_prob": torch.zeros(num_envs),
+        "sampling_top1_bin": torch.zeros(num_envs),
+    }
+    command.motion = SimpleNamespace(
+        time_step_total=16,
+        clip_frame_starts=torch.tensor([0, 5, 12], dtype=torch.long),
+        clip_num_frames=torch.tensor([5, 7, 4], dtype=torch.long),
+        clip_frame_ends=torch.tensor([5, 12, 16], dtype=torch.long),
+        clip_weights=torch.tensor([0.2, 0.3, 0.5], dtype=torch.float32),
+        joint_pos=torch.zeros(16, 2),
+        joint_vel=torch.zeros(16, 2),
+        body_pos_w=torch.zeros(16, 1, 3),
+        body_quat_w=torch.zeros(16, 1, 4),
+        body_lin_vel_w=torch.zeros(16, 1, 3),
+        body_ang_vel_w=torch.zeros(16, 1, 3),
+    )
+    command.motion.body_quat_w[..., 0] = 1.0
+    command.time_steps = torch.zeros(num_envs, dtype=torch.long)
+    command._clip_ids = torch.zeros(num_envs, dtype=torch.long)
+    command._clip_bin_counts = torch.tensor([2, 3, 2], dtype=torch.long)
+    command._clip_bin_offsets = torch.tensor([0, 2, 5, 7], dtype=torch.long)
+    command.bin_count = 7
+    command.bin_failed_count = torch.zeros(command.bin_count, dtype=torch.float32)
+    command._current_bin_failed = torch.zeros(command.bin_count, dtype=torch.float32)
+    return command
+
+
+def test_multi_motion_command_start_sampling_uses_clip_starts() -> None:
+    command = _make_light_command()
+    command._sample_clip_ids = lambda count: torch.tensor([2, 0], dtype=torch.long)
+    env_ids = torch.tensor([0, 2], dtype=torch.long)
+
+    command._start_sampling(env_ids)
+
+    assert command._clip_ids.tolist() == [2, 0, 0]
+    assert command.time_steps.tolist() == [12, 0, 0]
+
+
+def test_multi_motion_command_uniform_sampling_stays_inside_selected_clips(monkeypatch) -> None:
+    command = _make_light_command()
+    command._sample_clip_ids = lambda count: torch.tensor([0, 1, 2], dtype=torch.long)
+    monkeypatch.setattr(torch, "rand", lambda *args, **kwargs: torch.tensor([0.0, 0.999, 0.5]))
+
+    command._uniform_sampling(torch.tensor([0, 1, 2], dtype=torch.long))
+
+    starts = command.motion.clip_frame_starts[command._clip_ids]
+    ends = command.motion.clip_frame_ends[command._clip_ids]
+    assert torch.all(command.time_steps >= starts)
+    assert torch.all(command.time_steps < ends)
+
+
+def test_multi_motion_command_records_adaptive_failures_by_clip_bin() -> None:
+    command = _make_light_command()
+    command._env.termination_manager.terminated = torch.tensor([False, True, True])
+    command._clip_ids = torch.tensor([0, 1, 2], dtype=torch.long)
+    command.time_steps = torch.tensor([0, 7, 15], dtype=torch.long)
+
+    command._record_adaptive_failures(torch.tensor([0, 1, 2], dtype=torch.long))
+
+    expected = torch.zeros(command.bin_count)
+    expected[2] = 1.0
+    expected[6] = 1.0
+    torch.testing.assert_close(command.bin_failed_count, expected)
+
+
+def test_multi_motion_command_update_resamples_only_ended_envs() -> None:
+    command = _make_light_command(num_envs=4)
+    command.time_steps = torch.tensor([3, 4, 8, 11], dtype=torch.long)
+    command._clip_ids = torch.tensor([0, 0, 1, 1], dtype=torch.long)
+    resampled = []
+
+    def fake_resample(env_ids):
+        resampled.append(env_ids.clone())
+        command.time_steps[env_ids] = torch.tensor([0, 5], dtype=torch.long)
+        command._clip_ids[env_ids] = torch.tensor([0, 1], dtype=torch.long)
+
+    command._resample_command = fake_resample
+    command.update_relative_body_poses = lambda: None
+
+    command._update_command()
+
+    assert len(resampled) == 1
+    torch.testing.assert_close(resampled[0], torch.tensor([1, 3], dtype=torch.long))
+    assert command.time_steps.tolist() == [4, 0, 9, 5]
+
+
+def test_multi_motion_command_reset_to_frame_uses_global_frame_helper() -> None:
+    command = _make_light_command(num_envs=2)
+    env_ids = torch.tensor([0, 1], dtype=torch.long)
+    calls = []
+
+    def fake_set_global_frames(called_env_ids, frames):
+        calls.append((called_env_ids.clone(), frames.clone()))
+        command.time_steps[called_env_ids] = torch.tensor([5, 5], dtype=torch.long)
+        command._clip_ids[called_env_ids] = torch.tensor([1, 1], dtype=torch.long)
+
+    command._set_global_frames = fake_set_global_frames
+    command._write_reference_state_to_sim = lambda *args: None
+
+    command.reset_to_frame(env_ids, 9)
+
+    assert len(calls) == 1
+    torch.testing.assert_close(calls[0][0], env_ids)
+    torch.testing.assert_close(calls[0][1], torch.tensor([9, 9], dtype=torch.long))
+    assert command.time_steps.tolist() == [5, 5]
+    assert command._clip_ids.tolist() == [1, 1]
 
 
 def test_multi_motion_command_gui_scrubber_syncs_clip_ids() -> None:

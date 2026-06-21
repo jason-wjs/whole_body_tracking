@@ -40,8 +40,8 @@ class _CompiledMotionLoader:
       raise ValueError("dataset_weights must be empty or match dataset_paths in length")
 
     dataset_weight_tensor = torch.tensor(dataset_weights, dtype=torch.float64)
-    if torch.any(dataset_weight_tensor <= 0):
-      raise ValueError("dataset_weights must all be positive")
+    if not torch.all(torch.isfinite(dataset_weight_tensor)) or torch.any(dataset_weight_tensor <= 0):
+      raise ValueError("dataset_weights must be finite and positive")
 
     datasets = [CompiledMotionDataset.open(path) for path in dataset_paths]
     joint_names = datasets[0].joint_names
@@ -86,8 +86,13 @@ class _CompiledMotionLoader:
     starts_np = np.concatenate(clip_frame_starts, axis=0).astype(np.int64, copy=False)
     lengths_np = np.concatenate(clip_num_frames, axis=0).astype(np.int64, copy=False)
     weights_np = np.concatenate(weighted_clip_weights, axis=0).astype(np.float64, copy=False)
-    if np.any(weights_np < 0.0) or float(weights_np.sum()) <= 0.0:
-      raise ValueError("clip weights must be non-negative and sum to a positive value")
+    if weights_np.size == 0 or weights_np.shape != starts_np.shape or weights_np.shape != lengths_np.shape:
+      raise ValueError("clip weights must align with clip metadata")
+    if not np.all(np.isfinite(weights_np)):
+      raise ValueError("clip weights must be finite")
+    weight_sum = float(weights_np.sum())
+    if np.any(weights_np < 0.0) or not np.isfinite(weight_sum) or weight_sum <= 0.0:
+      raise ValueError("clip weights must be non-negative and sum to a positive finite value")
 
     self.clip_frame_starts = torch.as_tensor(starts_np, dtype=torch.long, device=device)
     self.clip_num_frames = torch.as_tensor(lengths_np, dtype=torch.long, device=device)
