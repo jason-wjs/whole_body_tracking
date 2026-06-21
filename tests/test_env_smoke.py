@@ -14,9 +14,20 @@ from whole_body_tracking.data.g1_schema import (
 from whole_body_tracking.tasks.general_tracking.config.g1.env_cfgs import (
     unitree_g1_general_tracking_env_cfg,
 )
+from whole_body_tracking.tasks.general_tracking.general_tracking_env_cfg import (
+    make_general_tracking_env_cfg,
+)
 from whole_body_tracking.tasks.general_tracking.mdp.commands import (
     MultiMotionCommandCfg,
 )
+
+
+def test_base_general_tracking_cfg_leaves_robot_specific_body_names_unset() -> None:
+    cfg = make_general_tracking_env_cfg()
+    motion_cfg = cfg.commands["motion"]
+    assert isinstance(motion_cfg, MultiMotionCommandCfg)
+    assert motion_cfg.anchor_body_name == ""
+    assert motion_cfg.body_names == ()
 
 
 def test_play_env_cfg_reads_dataset_paths_from_environment(monkeypatch, tmp_path: Path) -> None:

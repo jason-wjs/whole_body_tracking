@@ -479,7 +479,3 @@ class MultiMotionCommand(MotionCommand):
     self.metrics["sampling_entropy"][:] = torch.clamp(entropy_norm, 0.0, 1.0)
     self.metrics["sampling_top1_prob"][:] = top1_prob
     self.metrics["sampling_top1_bin"][:] = top1_bin.float() / max(int(probabilities.numel()), 1)
-
-
-GeneralTrackingCommandCfg = MultiMotionCommandCfg
-GeneralTrackingCommand = MultiMotionCommand
