@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 from whole_body_tracking.tasks.general_tracking.scripts import play as play_script
@@ -11,8 +12,8 @@ def test_play_cli_extracts_dataset_args_and_delegates(monkeypatch) -> None:
 
     def _fake_delegate(argv: list[str]) -> int:
         captured["argv"] = argv
-        captured["paths"] = json.loads(str(play_script.os.environ["WBT_COMPILED_DATASET_PATHS"]))
-        captured["weights"] = json.loads(str(play_script.os.environ["WBT_COMPILED_DATASET_WEIGHTS"]))
+        captured["paths"] = json.loads(str(os.environ["WBT_COMPILED_DATASET_PATHS"]))
+        captured["weights"] = json.loads(str(os.environ["WBT_COMPILED_DATASET_WEIGHTS"]))
         return 0
 
     monkeypatch.delenv("WBT_COMPILED_DATASET_PATHS", raising=False)

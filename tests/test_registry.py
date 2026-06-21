@@ -3,10 +3,10 @@ from __future__ import annotations
 import importlib
 import subprocess
 import sys
-import tomllib
 from pathlib import Path
 
 import mjlab.tasks.registry as registry
+import tomllib
 
 
 def test_pyproject_declares_mjlab_task_entrypoint() -> None:
