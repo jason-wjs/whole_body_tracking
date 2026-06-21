@@ -6,8 +6,10 @@ from mjlab.envs import ManagerBasedRlEnvCfg
 from mjlab.managers.observation_manager import ObservationGroupCfg
 from mjlab.tasks.tracking.tracking_env_cfg import make_tracking_env_cfg
 
-from whole_body_tracking.robots.g1.schema import ANCHOR_BODY_NAME, G1_BODY_NAMES
-from whole_body_tracking.tasks.general_tracking.mdp.commands import GeneralTrackingCommandCfg
+from whole_body_tracking.data.g1_schema import G1_ANCHOR_BODY_NAME, G1_BODY_NAMES
+from whole_body_tracking.tasks.general_tracking.mdp.commands import (
+  GeneralTrackingCommandCfg,
+)
 
 VELOCITY_RANGE = {
   "x": (-0.5, 0.5),
@@ -33,7 +35,7 @@ def make_general_tracking_env_cfg(
     debug_vis=not play,
     dataset_paths=dataset_paths,
     dataset_weights=dataset_weights,
-    anchor_body_name=ANCHOR_BODY_NAME,
+    anchor_body_name=G1_ANCHOR_BODY_NAME,
     body_names=G1_BODY_NAMES,
     pose_range={
       "x": (-0.05, 0.05),

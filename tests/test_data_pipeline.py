@@ -8,8 +8,8 @@ import numpy as np
 from tests.helpers import create_raw_dataset_root
 from whole_body_tracking.data.build_dataset import build_compiled_dataset
 from whole_body_tracking.data.compiled_dataset import ARRAY_KEYS, CompiledMotionDataset
+from whole_body_tracking.data.g1_schema import G1_BODY_NAMES, G1_JOINT_NAMES
 from whole_body_tracking.data.schema import REQUIRED_NPZ_KEYS, validate_npz_file
-from whole_body_tracking.robots.g1.schema import G1_BODY_NAMES, G1_JOINT_NAMES
 
 
 def test_validate_npz_file_accepts_synthetic_clip(tmp_path: Path) -> None:

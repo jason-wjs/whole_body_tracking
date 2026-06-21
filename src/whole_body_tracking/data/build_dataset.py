@@ -11,8 +11,8 @@ from typing import Sequence
 import numpy as np
 
 from whole_body_tracking.data.compiled_dataset import ARRAY_KEYS
+from whole_body_tracking.data.g1_schema import G1_BODY_NAMES, G1_JOINT_NAMES
 from whole_body_tracking.data.schema import validate_npz_file
-from whole_body_tracking.robots.g1.schema import G1_BODY_NAMES, G1_JOINT_NAMES
 
 
 @dataclass(frozen=True)

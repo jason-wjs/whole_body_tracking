@@ -7,7 +7,7 @@ from pathlib import Path
 
 import numpy as np
 
-from whole_body_tracking.robots.g1.schema import G1_BODY_NAMES, G1_JOINT_NAMES
+from whole_body_tracking.data.g1_schema import G1_BODY_NAMES, G1_JOINT_NAMES
 
 REQUIRED_NPZ_KEYS: tuple[str, ...] = (
   "fps",

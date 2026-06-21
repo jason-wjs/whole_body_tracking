@@ -4,35 +4,37 @@ from pathlib import Path
 
 import numpy as np
 
+from whole_body_tracking.data.g1_schema import G1_BODY_NAMES, G1_JOINT_NAMES
+
 
 def create_raw_clip(path: Path, *, num_frames: int = 16, fps: int = 50, seed: int = 0) -> Path:
-    rng = np.random.default_rng(seed)
-    joint_pos = rng.normal(size=(num_frames, 29)).astype(np.float32) * 0.05
-    joint_vel = np.gradient(joint_pos, axis=0).astype(np.float32)
+  rng = np.random.default_rng(seed)
+  joint_pos = rng.normal(size=(num_frames, len(G1_JOINT_NAMES))).astype(np.float32) * 0.05
+  joint_vel = np.gradient(joint_pos, axis=0).astype(np.float32)
 
-    body_pos_w = np.zeros((num_frames, 30, 3), dtype=np.float32)
-    base_x = np.linspace(0.0, 0.05, num_frames, dtype=np.float32)
-    for body_id in range(30):
-        body_pos_w[:, body_id, 0] = base_x + body_id * 0.01
-        body_pos_w[:, body_id, 1] = body_id * 0.005
-        body_pos_w[:, body_id, 2] = 1.0 + body_id * 0.001
+  body_pos_w = np.zeros((num_frames, len(G1_BODY_NAMES), 3), dtype=np.float32)
+  base_x = np.linspace(0.0, 0.05, num_frames, dtype=np.float32)
+  for body_id in range(len(G1_BODY_NAMES)):
+    body_pos_w[:, body_id, 0] = base_x + body_id * 0.01
+    body_pos_w[:, body_id, 1] = body_id * 0.005
+    body_pos_w[:, body_id, 2] = 1.0 + body_id * 0.001
 
-    body_quat_w = np.zeros((num_frames, 30, 4), dtype=np.float32)
-    body_quat_w[..., 0] = 1.0
-    body_lin_vel_w = np.gradient(body_pos_w, axis=0).astype(np.float32)
-    body_ang_vel_w = np.zeros((num_frames, 30, 3), dtype=np.float32)
+  body_quat_w = np.zeros((num_frames, len(G1_BODY_NAMES), 4), dtype=np.float32)
+  body_quat_w[..., 0] = 1.0
+  body_lin_vel_w = np.gradient(body_pos_w, axis=0).astype(np.float32)
+  body_ang_vel_w = np.zeros((num_frames, len(G1_BODY_NAMES), 3), dtype=np.float32)
 
-    np.savez(
-        path,
-        fps=np.asarray([fps], dtype=np.float32),
-        joint_pos=joint_pos,
-        joint_vel=joint_vel,
-        body_pos_w=body_pos_w,
-        body_quat_w=body_quat_w,
-        body_lin_vel_w=body_lin_vel_w,
-        body_ang_vel_w=body_ang_vel_w,
-    )
-    return path
+  np.savez(
+    path,
+    fps=np.asarray([fps], dtype=np.float32),
+    joint_pos=joint_pos,
+    joint_vel=joint_vel,
+    body_pos_w=body_pos_w,
+    body_quat_w=body_quat_w,
+    body_lin_vel_w=body_lin_vel_w,
+    body_ang_vel_w=body_ang_vel_w,
+  )
+  return path
 
 
 def create_raw_dataset_root(

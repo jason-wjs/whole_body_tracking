@@ -1,4 +1,4 @@
-"""Canonical Unitree G1 semantic names used across whole_body_tracking."""
+"""Canonical Unitree G1 data contract for compiled motion datasets."""
 
 from __future__ import annotations
 
@@ -67,4 +67,28 @@ G1_BODY_NAMES: tuple[str, ...] = (
   "right_wrist_yaw_link",
 )
 
-ANCHOR_BODY_NAME = "torso_link"
+G1_ANCHOR_BODY_NAME = "torso_link"
+
+G1_TRACKED_BODY_NAMES: tuple[str, ...] = (
+  "pelvis",
+  "left_hip_roll_link",
+  "left_knee_link",
+  "left_ankle_roll_link",
+  "right_hip_roll_link",
+  "right_knee_link",
+  "right_ankle_roll_link",
+  "torso_link",
+  "left_shoulder_roll_link",
+  "left_elbow_link",
+  "left_wrist_yaw_link",
+  "right_shoulder_roll_link",
+  "right_elbow_link",
+  "right_wrist_yaw_link",
+)
+
+__all__ = [
+  "G1_ANCHOR_BODY_NAME",
+  "G1_BODY_NAMES",
+  "G1_JOINT_NAMES",
+  "G1_TRACKED_BODY_NAMES",
+]
